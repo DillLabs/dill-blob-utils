@@ -151,6 +151,10 @@ func TxApp(cliCtx *cli.Context) error {
 		Sidecar:    &types.BlobTxSidecar{Blobs: blobs, Commitments: commitments, Proofs: proofs},
 	})
 	signedTx, _ := types.SignTx(tx, types.NewCancunSigner(chainId), key)
+    log.Printf("Commitments: %v\n", fmt.Sprintf("0x%x", signedTx.BlobTxSidecar().Commitments))
+
+	log.Printf("GasTipCap: %v, BlobGasFeeCap: %v, GasFeeCap: %v\n", signedTx.GasTipCap(), signedTx.BlobGasFeeCap(), signedTx.GasFeeCap())
+
 	err = client.SendTransaction(context.Background(), signedTx)
 
 	if err != nil {
@@ -161,7 +165,7 @@ func TxApp(cliCtx *cli.Context) error {
 
 	//var receipt *types.Receipt
 	for {
-		_, err = client.TransactionReceipt(context.Background(), tx.Hash())
+		_, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
 		if err == ethereum.NotFound {
 			time.Sleep(1 * time.Second)
 		} else if err != nil {
