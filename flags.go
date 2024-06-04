@@ -115,7 +115,6 @@ var TxFlags = []cli.Flag{
 
 var BatchTxFlags = []cli.Flag{
 	TxRPCURLFlag,
-	//TxBlobFileFlag,
 	TxBlobSizeFlag,
 	TxToFlag,
 	TxValueFlag,
