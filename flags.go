@@ -15,6 +15,11 @@ var (
 		Usage:    "Blob file data",
 		Required: true,
 	}
+	TxBlobSizeFlag = cli.Uint64Flag{
+		Name:  "blob-size",
+		Usage: "Blob file size",
+		Value: 131072,
+	}
 	TxToFlag = cli.StringFlag{
 		Name:     "to",
 		Usage:    "tx to address",
@@ -96,6 +101,22 @@ var (
 var TxFlags = []cli.Flag{
 	TxRPCURLFlag,
 	TxBlobFileFlag,
+	TxToFlag,
+	TxValueFlag,
+	TxPrivateKeyFlag,
+	TxNonceFlag,
+	TxGasLimitFlag,
+	TxGasPriceFlag,
+	TxPriorityGasPrice,
+	TxMaxFeePerBlobGas,
+	TxChainID,
+	TxCalldata,
+}
+
+var BatchTxFlags = []cli.Flag{
+	TxRPCURLFlag,
+	//TxBlobFileFlag,
+	TxBlobSizeFlag,
 	TxToFlag,
 	TxValueFlag,
 	TxPrivateKeyFlag,
