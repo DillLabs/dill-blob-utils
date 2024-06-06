@@ -300,7 +300,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 			continue
 		}
 
-		blobs, commitments, proofs, versionedHashes, err := EncodeBlobs(data)
+		blobs, commitments, proofs, versionedHashes, err := EncodeBlobs(data, true)
 		if err != nil {
 			log.Printf("failed to compute commitments: %v", err)
 			continue
