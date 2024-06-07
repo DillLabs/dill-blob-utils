@@ -135,7 +135,7 @@ func TxApp(cliCtx *cli.Context) error {
 		return fmt.Errorf("%w: invalid max_fee_per_blob_gas", err)
 	}
 
-	blobs, commitments, proofs, versionedHashes, err := EncodeBlobs(data)
+	blobs, commitments, proofs, _, versionedHashes, err := EncodeBlobs(data)
 	if err != nil {
 		log.Fatalf("failed to compute commitments: %v", err)
 	}
@@ -221,8 +221,8 @@ func BatchTxApp(cliCtx *cli.Context) {
 	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)
 	blobSize := cliCtx.Uint64(TxBlobSizeFlag.Name)
-	//con := cliCtx.Uint64(TxConcurrenceFlag.Name)
-	nonce := cliCtx.Int64(TxNonceFlag.Name)
+	count := cliCtx.Uint64(TxConcurrenceFlag.Name)
+
 	value := cliCtx.String(TxValueFlag.Name)
 	gasLimit := cliCtx.Uint64(TxGasLimitFlag.Name)
 	gasPrice := cliCtx.String(TxGasPriceFlag.Name)
@@ -235,116 +235,166 @@ func BatchTxApp(cliCtx *cli.Context) {
 		log.Fatalf("invalid value param: %v", err)
 		return
 	}
+	calldataBytes, err := common.ParseHexOrString(calldata)
+	if err != nil {
+		log.Fatalf("failed to parse calldata: %v", err)
+	}
+	blobSize = blobSize - blobSize%32
+	blobPerTx := cliCtx.Uint64(TxBlobCountFlag.Name)
+	data := RandomFrData(int(blobSize * blobPerTx))
+	blobs, commitments, proofs, extra, versionedHashes, err := EncodeBlobs(data, true)
+	if err != nil {
+		log.Fatalf("failed to compute commitments: %v", err)
+	}
+	if len(extra) != len(blobs)*128 {
+		log.Fatal("extra number wrong")
+	}
+	chainId, _ := new(big.Int).SetString(chainID, 0)
 
-	for {
-		blobSize = blobSize - blobSize%32
-		data := RandomFrData(int(blobSize))
+	ctx := context.Background()
+	client, err := ethclient.DialContext(ctx, addr)
+	if err != nil {
+		log.Panicf("Failed to connect to the Ethereum client: %v", err)
+	}
+	masterKey, err := crypto.HexToECDSA(prv)
+	if err != nil {
+		log.Panicf("%v: invalid private key", err)
+	}
+	keys := generatePrivateKeys(int(count))
 
-		chainId, _ := new(big.Int).SetString(chainID, 0)
+	pendingNonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(masterKey.PublicKey))
+	if err != nil {
+		log.Panicf("Error getting nonce: %v", err)
+	}
+	masterNonce := int64(pendingNonce)
 
-		ctx := context.Background()
-		client, err := ethclient.DialContext(ctx, addr)
+	var gasPrice256 *uint256.Int
+	if gasPrice == "" {
+		val, err := client.SuggestGasPrice(ctx)
 		if err != nil {
-			log.Printf("Failed to connect to the Ethereum client: %v", err)
-			continue
+			log.Panicf("Error getting suggested gas price: %v", err)
 		}
-
-		key, err := crypto.HexToECDSA(prv)
+		var nok bool
+		gasPrice256, nok = uint256.FromBig(val)
+		if nok {
+			log.Panicf("gas price is too high! got %v", val.String())
+		}
+	} else {
+		gasPrice256, err = DecodeUint256String(gasPrice)
 		if err != nil {
-			log.Printf("%v: invalid private key", err)
-			continue
-		}
-
-		if nonce == -1 {
-			pendingNonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
-			if err != nil {
-				log.Printf("Error getting nonce: %v", err)
-				continue
-			}
-			nonce = int64(pendingNonce)
-		}
-
-		var gasPrice256 *uint256.Int
-		if gasPrice == "" {
-			val, err := client.SuggestGasPrice(ctx)
-			if err != nil {
-				log.Printf("Error getting suggested gas price: %v", err)
-				continue
-			}
-			var nok bool
-			gasPrice256, nok = uint256.FromBig(val)
-			if nok {
-				log.Printf("gas price is too high! got %v", val.String())
-				continue
-			}
-		} else {
-			gasPrice256, err = DecodeUint256String(gasPrice)
-			if err != nil {
-				log.Printf("%v: invalid gas price", err)
-				continue
-			}
-		}
-
-		priorityGasPrice256 := gasPrice256
-		if priorityGasPrice != "" {
-			priorityGasPrice256, err = DecodeUint256String(priorityGasPrice)
-			if err != nil {
-				log.Printf("%v: invalid priority gas price", err)
-				continue
-			}
-		}
-
-		maxFeePerBlobGas256, err := DecodeUint256String(maxFeePerBlobGas)
-		if err != nil {
-			log.Printf("%v: invalid max_fee_per_blob_gas", err)
-			continue
-		}
-
-		blobs, commitments, proofs, versionedHashes, err := EncodeBlobs(data, true)
-		if err != nil {
-			log.Printf("failed to compute commitments: %v", err)
-			continue
-		}
-
-		calldataBytes, err := common.ParseHexOrString(calldata)
-		if err != nil {
-			log.Printf("failed to parse calldata: %v", err)
-			continue
-		}
-
-		tx := types.NewTx(&types.BlobTx{
-			ChainID:    uint256.MustFromBig(chainId),
-			Nonce:      uint64(nonce),
-			GasTipCap:  priorityGasPrice256,
-			GasFeeCap:  gasPrice256,
-			Gas:        gasLimit,
-			To:         to,
-			Value:      value256,
-			Data:       calldataBytes,
-			BlobFeeCap: maxFeePerBlobGas256,
-			BlobHashes: versionedHashes,
-			Sidecar:    &types.BlobTxSidecar{Blobs: blobs, Commitments: commitments, Proofs: proofs},
-		})
-		signedTx, _ := types.SignTx(tx, types.NewCancunSigner(chainId), key)
-
-		log.Printf("Commitments: %v\n", fmt.Sprintf("0x%x", signedTx.BlobTxSidecar().Commitments))
-
-		log.Printf("GasTipCap: %v, BlobGasFeeCap: %v, GasFeeCap: %v\n",
-			signedTx.GasTipCap(), signedTx.BlobGasFeeCap(), signedTx.GasFeeCap())
-
-		err = client.SendTransaction(context.Background(), signedTx)
-
-		if err != nil {
-			log.Printf("failed to send transaction: %v", err)
-			continue
-		} else {
-			log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
-			nonce += 1
-			if nonce%10 == 0 {
-				time.Sleep(60 * time.Second)
-			}
+			log.Panicf("%v: invalid gas price", err)
 		}
 	}
+	transferTxs := map[int]*types.Transaction{}
+	for i, subKey := range keys {
+		pub := subKey.PublicKey
+		addr := crypto.PubkeyToAddress(pub)
+		tx, err := transferToken(client, addr.Hex(), 1000, uint64(masterNonce), chainId.Int64(), gasPrice256.ToBig().Int64(), int64(gasLimit), masterKey)
+		if err != nil {
+			log.Panic(err)
+		}
+		masterNonce++
+		transferTxs[i] = tx
+	}
+	for {
+		for i, tx := range transferTxs {
+			_, err = client.TransactionReceipt(context.Background(), tx.Hash())
+			if err == nil {
+				delete(transferTxs, i)
+				continue
+			}
+			if err != ethereum.NotFound {
+				log.Printf("transfer failed: %+v", err)
+			}
+		}
+		if len(transferTxs) == 0 {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	log.Printf("transfer tx done")
+	for idx := range keys {
+		go func(i int) {
+			client, err := ethclient.DialContext(ctx, addr)
+			if err != nil {
+				log.Panicf("Failed to connect to the Ethereum client: %v", err)
+			}
+			key := keys[i]
+			pendingNonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
+			if err != nil {
+				log.Panicf("Error getting nonce: %v", err)
+			}
+			subNonuce := int64(pendingNonce)
+			var gasPrice256 *uint256.Int
+			if gasPrice == "" {
+				val, err := client.SuggestGasPrice(ctx)
+				if err != nil {
+					log.Fatalf("Error getting suggested gas price: %v", err)
+				}
+				var nok bool
+				gasPrice256, nok = uint256.FromBig(val)
+				if nok {
+					log.Fatalf("gas price is too high! got %v", val.String())
+				}
+			} else {
+				gasPrice256, err = DecodeUint256String(gasPrice)
+				if err != nil {
+					log.Fatalf("%v: invalid gas price", err)
+				}
+			}
+			priorityGasPrice256 := gasPrice256
+			if priorityGasPrice != "" {
+				priorityGasPrice256, err = DecodeUint256String(priorityGasPrice)
+				if err != nil {
+					log.Fatalf("%v: invalid priority gas price", err)
+
+				}
+			}
+
+			maxFeePerBlobGas256, err := DecodeUint256String(maxFeePerBlobGas)
+			if err != nil {
+				log.Fatalf("%v: invalid max_fee_per_blob_gas", err)
+			}
+			log.Printf("all preparation done for client %d, start loop sending transactions", i)
+			for {
+				tx := types.NewTx(&types.BlobTx{
+					ChainID:    uint256.MustFromBig(chainId),
+					Nonce:      uint64(subNonuce),
+					GasTipCap:  priorityGasPrice256,
+					GasFeeCap:  gasPrice256,
+					Gas:        gasLimit,
+					To:         to,
+					Value:      value256,
+					Data:       calldataBytes,
+					BlobFeeCap: maxFeePerBlobGas256,
+					BlobHashes: versionedHashes,
+					Sidecar: &types.BlobTxSidecar{
+						Blobs:       blobs,
+						Commitments: commitments,
+						Proofs:      proofs,
+						ExtraProofs: extra,
+					},
+				})
+				signedTx, _ := types.SignTx(tx, types.NewCancunSigner(chainId), key)
+
+				log.Printf("Commitments: %v\n", fmt.Sprintf("0x%x", signedTx.BlobTxSidecar().Commitments))
+				log.Printf("Extra proof count: %v\n", fmt.Sprintf("%d", len(signedTx.BlobTxSidecar().ExtraProofs)))
+				log.Printf("GasTipCap: %v, BlobGasFeeCap: %v, GasFeeCap: %v\n",
+					signedTx.GasTipCap(), signedTx.BlobGasFeeCap(), signedTx.GasFeeCap())
+				err = client.SendTransaction(context.Background(), signedTx)
+				if err != nil {
+					log.Printf("failed to send transaction: %v", err)
+					time.Sleep(60 * time.Second)
+				} else {
+					log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
+					subNonuce += 1
+				}
+			}
+		}(idx)
+	}
+
+	pendingCh := make(chan struct{})
+	<-pendingCh
 }
 
 func ProofApp(cliCtx *cli.Context) error {
@@ -356,7 +406,7 @@ func ProofApp(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("error reading blob file: %v", err)
 	}
-	blobs, commitments, _, versionedHashes, err := EncodeBlobs(data)
+	blobs, commitments, _, _, versionedHashes, err := EncodeBlobs(data)
 	if err != nil {
 		log.Fatalf("failed to compute commitments: %v", err)
 	}

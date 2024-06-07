@@ -20,6 +20,16 @@ var (
 		Usage: "Blob file size",
 		Value: 131072,
 	}
+	TxBlobCountFlag = cli.Uint64Flag{
+		Name:  "tx-blob-count",
+		Usage: "blob counts in a single tx",
+		Value: 2,
+	}
+	TxConcurrenceFlag = cli.Uint64Flag{
+		Name:  "tx-concurrence",
+		Usage: "accounts sending tx in parallel",
+		Value: 4,
+	}
 	TxToFlag = cli.StringFlag{
 		Name:     "to",
 		Usage:    "tx to address",
@@ -116,6 +126,8 @@ var TxFlags = []cli.Flag{
 var BatchTxFlags = []cli.Flag{
 	TxRPCURLFlag,
 	TxBlobSizeFlag,
+	TxBlobCountFlag,
+	TxConcurrenceFlag,
 	TxToFlag,
 	TxValueFlag,
 	TxPrivateKeyFlag,
