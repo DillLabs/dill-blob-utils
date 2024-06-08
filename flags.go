@@ -69,6 +69,16 @@ var (
 		Usage: "calldata of the transaction",
 		Value: "0x",
 	}
+	TxDeltaNonceFlag = cli.Int64Flag{
+		Name:  "delta-nonce",
+		Usage: "tx delta nonce",
+		Value: 10,
+	}
+	TxDeltaSleepTimeFlag = cli.Uint64Flag{
+		Name:  "delta-sleep-time",
+		Usage: "delta sleep time",
+		Value: 60,
+	}
 
 	DownloadBeaconP2PAddr = cli.StringFlag{
 		Name:  "beacon-p2p-addr",
@@ -126,6 +136,8 @@ var BatchTxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
+	TxDeltaNonceFlag,
+	TxDeltaSleepTimeFlag,
 }
 
 var DownloadFlags = []cli.Flag{

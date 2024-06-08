@@ -221,8 +221,9 @@ func BatchTxApp(cliCtx *cli.Context) {
 	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)
 	blobSize := cliCtx.Uint64(TxBlobSizeFlag.Name)
-	//con := cliCtx.Uint64(TxConcurrenceFlag.Name)
 	nonce := cliCtx.Int64(TxNonceFlag.Name)
+	deltaNonce := cliCtx.Int64(TxDeltaNonceFlag.Name)
+	deltaSleep := cliCtx.Int64(TxDeltaSleepTimeFlag.Name)
 	value := cliCtx.String(TxValueFlag.Name)
 	gasLimit := cliCtx.Uint64(TxGasLimitFlag.Name)
 	gasPrice := cliCtx.String(TxGasPriceFlag.Name)
@@ -255,7 +256,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 			continue
 		}
 
-		if nonce == -1 {
+		if nonce == -1 || nonce%int64(deltaNonce) == 0 {
 			pendingNonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
 			if err != nil {
 				log.Printf("Error getting nonce: %v", err)
@@ -340,8 +341,8 @@ func BatchTxApp(cliCtx *cli.Context) {
 		} else {
 			log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
 			nonce += 1
-			if nonce%10 == 0 {
-				time.Sleep(60 * time.Second)
+			if nonce%int64(deltaNonce) == 0 {
+				time.Sleep(time.Duration(deltaSleep) * time.Second)
 			}
 		}
 	}
