@@ -140,6 +140,26 @@ var BatchTxFlags = []cli.Flag{
 	TxDeltaSleepTimeFlag,
 }
 
+var TransferTxFlags = []cli.Flag{
+	TxRPCURLFlag,
+	TxToFlag,
+	TxValueFlag,
+	TxPrivateKeyFlag,
+	TxNonceFlag,
+	TxChainID,
+}
+
+var BatchTransferTxFlags = []cli.Flag{
+	TxRPCURLFlag,
+	TxToFlag,
+	TxValueFlag,
+	TxPrivateKeyFlag,
+	TxNonceFlag,
+	TxChainID,
+	TxDeltaNonceFlag,
+	TxDeltaSleepTimeFlag,
+}
+
 var DownloadFlags = []cli.Flag{
 	DownloadBeaconP2PAddr,
 	DownloadSlotFlag,

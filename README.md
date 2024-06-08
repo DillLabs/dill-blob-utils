@@ -2,7 +2,7 @@
 
 CLI for messing around with Proto-Danksharding blobs. To get started run:
 ```
-git clone https://github.com/Inphi/blob-utils && cd blob-utils
+git clone https://github.com/DillLabs/blob-utils && cd blob-utils
 go build
 ./blob-utils -help
 ```
