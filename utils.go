@@ -32,13 +32,22 @@ func encodeBlobs(data []byte) []kzg4844.Blob {
 	return blobs
 }
 
-func EncodeBlobs(data []byte) ([]kzg4844.Blob, []kzg4844.Commitment, []kzg4844.Proof, []common.Hash, error) {
+func EncodeBlobs(data []byte, canonical ...bool) ([]kzg4844.Blob, []kzg4844.Commitment, []kzg4844.Proof, []common.Hash, error) {
 	var (
-		blobs           = encodeBlobs(data)
+		blobs           []kzg4844.Blob
 		commits         []kzg4844.Commitment
 		proofs          []kzg4844.Proof
 		versionedHashes []common.Hash
 	)
+
+	if len(canonical) != 0 && canonical[0] {
+		blobSize := 4096 * 32
+		for i := 0; i < len(data)/blobSize; i++ {
+			blobs = append(blobs, kzg4844.Blob(data[i*blobSize:(i+1)*blobSize]))
+		}
+	} else {
+		blobs = encodeBlobs(data)
+	}
 	for _, blob := range blobs {
 		commit, err := kzg4844.BlobToCommitment(blob)
 		if err != nil {

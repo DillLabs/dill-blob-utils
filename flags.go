@@ -15,6 +15,11 @@ var (
 		Usage:    "Blob file data",
 		Required: true,
 	}
+	TxBlobSizeFlag = cli.Uint64Flag{
+		Name:  "blob-size",
+		Usage: "Blob file size",
+		Value: 131072,
+	}
 	TxToFlag = cli.StringFlag{
 		Name:     "to",
 		Usage:    "tx to address",
@@ -64,6 +69,16 @@ var (
 		Usage: "calldata of the transaction",
 		Value: "0x",
 	}
+	TxDeltaNonceFlag = cli.Int64Flag{
+		Name:  "delta-nonce",
+		Usage: "tx delta nonce",
+		Value: 10,
+	}
+	TxDeltaSleepTimeFlag = cli.Uint64Flag{
+		Name:  "delta-sleep-time",
+		Usage: "delta sleep time",
+		Value: 60,
+	}
 
 	DownloadBeaconP2PAddr = cli.StringFlag{
 		Name:  "beacon-p2p-addr",
@@ -106,6 +121,23 @@ var TxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
+}
+
+var BatchTxFlags = []cli.Flag{
+	TxRPCURLFlag,
+	TxBlobSizeFlag,
+	TxToFlag,
+	TxValueFlag,
+	TxPrivateKeyFlag,
+	TxNonceFlag,
+	TxGasLimitFlag,
+	TxGasPriceFlag,
+	TxPriorityGasPrice,
+	TxMaxFeePerBlobGas,
+	TxChainID,
+	TxCalldata,
+	TxDeltaNonceFlag,
+	TxDeltaSleepTimeFlag,
 }
 
 var DownloadFlags = []cli.Flag{
