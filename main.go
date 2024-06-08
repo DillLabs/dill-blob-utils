@@ -3,15 +3,18 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/DillLabs/blob-utils/hex"
+
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -37,6 +40,18 @@ func main() {
 			Usage:  "send a batch of transactions",
 			Action: BatchTxApp,
 			Flags:  BatchTxFlags,
+		},
+		{
+			Name:   "transferTx",
+			Usage:  "send a transfer transaction",
+			Action: TransferTxApp,
+			Flags:  TransferTxFlags,
+		},
+		{
+			Name:   "batchTransferTx",
+			Usage:  "send a batch of transfer transaction",
+			Action: BatchTransferTxApp,
+			Flags:  BatchTransferTxFlags,
 		},
 		{
 			Name:   "download",
@@ -344,6 +359,174 @@ func BatchTxApp(cliCtx *cli.Context) {
 			if nonce%int64(deltaNonce) == 0 {
 				time.Sleep(time.Duration(deltaSleep) * time.Second)
 			}
+		}
+	}
+}
+
+func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.TransactOpts, to common.Address, amount *big.Int, nonce *uint64) *types.Transaction {
+	if nonce == nil {
+		log.Printf("reading nonce for account: %v", auth.From.Hex())
+		var err error
+		n, err := client.NonceAt(ctx, auth.From, nil)
+		log.Printf("nonce: %v", n)
+		chkErr(err)
+		nonce = &n
+	}
+
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	chkErr(err)
+
+	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{To: &to})
+	chkErr(err)
+
+	tx := types.NewTransaction(*nonce, to, amount, gasLimit, gasPrice, nil)
+
+	signedTx, err := auth.Signer(auth.From, tx)
+	chkErr(err)
+
+	//log.Printf("sending transfer tx")
+	err = client.SendTransaction(ctx, signedTx)
+	chkErr(err)
+	log.Printf("tx sent: %v", signedTx.Hash().Hex())
+
+	rlp, err := signedTx.MarshalBinary()
+	chkErr(err)
+
+	log.Printf("tx rlp: %v", hex.EncodeToHex(rlp))
+
+	return signedTx
+}
+
+func chkErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TransferTxApp(cliCtx *cli.Context) error {
+	addr := cliCtx.String(TxRPCURLFlag.Name)
+	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
+	value := cliCtx.Int64(TxValueFlag.Name)
+	prv := cliCtx.String(TxPrivateKeyFlag.Name)
+	nonce := cliCtx.Int64(TxNonceFlag.Name)
+	chainID := cliCtx.Uint64(TxChainID.Name)
+
+	ctx := context.Background()
+	client, err := ethclient.DialContext(ctx, addr)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+	}
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(prv, "0x"))
+	if err != nil {
+		log.Fatalf("Failed to parse private key: %v", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(0).SetUint64(chainID))
+	chkErr(err)
+
+	balance, err := client.BalanceAt(ctx, auth.From, nil)
+	chkErr(err)
+	log.Printf("ETH Balance for %v: %v", auth.From, balance)
+
+	// Valid ETH Transfer
+	balance, err = client.BalanceAt(ctx, auth.From, nil)
+	log.Printf("ETH Balance for %v: %v", auth.From, balance)
+	chkErr(err)
+
+	transferAmount := big.NewInt(value)
+	log.Printf("Transfer Amount: %v", transferAmount)
+	key, err := crypto.HexToECDSA(prv)
+	if err != nil {
+		return fmt.Errorf("%w: invalid private key", err)
+	}
+
+	pendingNonce := uint64(0)
+	if nonce == -1 {
+		pendingNonce, err = client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
+		if err != nil {
+			log.Fatalf("Error getting nonce: %v", err)
+		}
+	} else {
+		pendingNonce = uint64(nonce)
+	}
+
+	signedTx := ethTransfer(ctx, client, auth, to, transferAmount, &pendingNonce)
+	//fmt.Println("tx sent: ", signedTx.Hash().String())
+
+	//var receipt *types.Receipt
+	for {
+		_, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
+		if err == ethereum.NotFound {
+			time.Sleep(3 * time.Second)
+		} else if err != nil {
+			if _, ok := err.(*json.UnmarshalTypeError); ok {
+				// TODO: ignore other errors for now. Some clients are treating the blobGasUsed as big.Int rather than uint64
+				break
+			}
+		} else {
+			break
+		}
+	}
+	log.Printf("Transaction included. nonce=%d hash=%v", nonce, signedTx.Hash())
+
+	return nil
+}
+
+func BatchTransferTxApp(cliCtx *cli.Context) {
+	addr := cliCtx.String(TxRPCURLFlag.Name)
+	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
+	value := cliCtx.Int64(TxValueFlag.Name)
+	prv := cliCtx.String(TxPrivateKeyFlag.Name)
+	nonce := cliCtx.Int64(TxNonceFlag.Name)
+	chainID := cliCtx.Uint64(TxChainID.Name)
+	deltaNonce := cliCtx.Int64(TxDeltaNonceFlag.Name)
+	deltaSleep := cliCtx.Int64(TxDeltaSleepTimeFlag.Name)
+
+	ctx := context.Background()
+	client, err := ethclient.DialContext(ctx, addr)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+	}
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(prv, "0x"))
+	if err != nil {
+		log.Fatalf("Failed to parse private key: %v", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(0).SetUint64(chainID))
+	chkErr(err)
+
+	for {
+		balance, err := client.BalanceAt(ctx, auth.From, nil)
+		chkErr(err)
+		log.Printf("ETH Balance for %v: %v", auth.From, balance)
+
+		transferAmount := big.NewInt(value)
+		log.Printf("Transfer Amount: %v", transferAmount)
+		key, err := crypto.HexToECDSA(prv)
+		if err != nil {
+			log.Printf("%s: invalid private key", err.Error())
+			return
+		}
+
+		pendingNonce := uint64(0)
+		if nonce == -1 {
+			pendingNonce, err = client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
+			if err != nil {
+				log.Fatalf("Error getting nonce: %v", err)
+			}
+		} else {
+			pendingNonce = uint64(nonce)
+		}
+
+		signedTx := ethTransfer(ctx, client, auth, to, transferAmount, &pendingNonce)
+		log.Printf("tx sent: %s", signedTx.Hash().String())
+
+		nonce = int64(pendingNonce) + 1
+		if nonce%int64(deltaNonce) == 0 {
+			log.Printf("nonce %d, deltaNonce: %d, sleep %d seconds", nonce, deltaNonce, deltaSleep)
+			time.Sleep(time.Duration(deltaSleep) * time.Second)
 		}
 	}
 }
