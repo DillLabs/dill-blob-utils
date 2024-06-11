@@ -30,6 +30,11 @@ var (
 		Usage: "accounts sending tx in parallel",
 		Value: 4,
 	}
+	TxWaitingFlag = cli.Uint64Flag{
+		Name:  "tx-waiting",
+		Usage: "waiting time when tx pool overloaded",
+		Value: 15,
+	}
 	TxToFlag = cli.StringFlag{
 		Name:     "to",
 		Usage:    "tx to address",
@@ -126,6 +131,7 @@ var TxFlags = []cli.Flag{
 var BatchTxFlags = []cli.Flag{
 	TxRPCURLFlag,
 	TxBlobSizeFlag,
+	TxWaitingFlag,
 	TxBlobCountFlag,
 	TxConcurrenceFlag,
 	TxToFlag,

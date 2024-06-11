@@ -222,7 +222,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)
 	blobSize := cliCtx.Uint64(TxBlobSizeFlag.Name)
 	count := cliCtx.Uint64(TxConcurrenceFlag.Name)
-
+	waitTime := time.Duration(cliCtx.Uint64(TxWaitingFlag.Name)) * time.Second
 	value := cliCtx.String(TxValueFlag.Name)
 	gasLimit := cliCtx.Uint64(TxGasLimitFlag.Name)
 	gasPrice := cliCtx.String(TxGasPriceFlag.Name)
@@ -289,7 +289,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	for i, subKey := range keys {
 		pub := subKey.PublicKey
 		addr := crypto.PubkeyToAddress(pub)
-		tx, err := transferToken(client, addr.Hex(), 1000, uint64(masterNonce), chainId.Int64(), gasPrice256.ToBig().Int64(), int64(gasLimit), masterKey)
+		tx, err := transferToken(client, addr.Hex(), 100, uint64(masterNonce), chainId.Int64(), gasPrice256.ToBig().Int64(), int64(gasLimit), masterKey)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -314,6 +314,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	}
 	log.Printf("transfer tx done")
 	for idx := range keys {
+		time.Sleep(5 * time.Second)
 		go func(i int) {
 			client, err := ethclient.DialContext(ctx, addr)
 			if err != nil {
@@ -384,7 +385,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 				err = client.SendTransaction(context.Background(), signedTx)
 				if err != nil {
 					log.Printf("failed to send transaction: %v", err)
-					time.Sleep(60 * time.Second)
+					time.Sleep(waitTime)
 				} else {
 					log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
 					subNonuce += 1
