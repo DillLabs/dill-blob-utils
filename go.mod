@@ -1,10 +1,8 @@
 module github.com/DillLabs/blob-utils
 
-go 1.22.0
+go 1.22.4
 
-toolchain go1.22.2
-
-replace github.com/ethereum/go-ethereum => ../go-ethereum
+replace github.com/ethereum/go-ethereum => ../dill-execution
 
 replace github.com/crate-crypto/go-kzg-4844 => ../das/go-kzg-4844-prysm
 
