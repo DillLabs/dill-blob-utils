@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DillLabs/blob-utils/hex"
+	"github.com/DillLabs/dill-blob-utils/hex"
+	ethereum "github.com/DillLabs/dill-execution"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	gethkzg4844 "github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/DillLabs/dill-execution/accounts/abi/bind"
+	"github.com/DillLabs/dill-execution/common"
+	"github.com/DillLabs/dill-execution/core/types"
+	"github.com/DillLabs/dill-execution/crypto"
+	gethkzg4844 "github.com/DillLabs/dill-execution/crypto/kzg4844"
+	"github.com/DillLabs/dill-execution/ethclient"
 	"github.com/holiman/uint256"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
