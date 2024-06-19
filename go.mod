@@ -1,24 +1,22 @@
-module github.com/DillLabs/blob-utils
+module github.com/DillLabs/dill-blob-utils
 
 go 1.22.4
 
-replace github.com/ethereum/go-ethereum => ../dill-execution
+replace github.com/DillLabs/dill-execution => ../dill-execution
 
-replace github.com/crate-crypto/go-kzg-4844 => ../das/go-kzg-4844-prysm
-
-replace github.com/PineXLabs/das => ../das
+replace github.com/crate-crypto/go-kzg-4844 => ../dill-das/go-kzg-4844-prysm
 
 require (
+	github.com/DillLabs/dill-execution v1.13.15-alpha
 	github.com/consensys/gnark-crypto v0.12.1
-	github.com/ethereum/go-ethereum v1.13.5-0.20231022140504-a6a0ae45b69a
 	github.com/holiman/uint256 v1.2.4
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.9
 )
 
 require (
+	github.com/DillLabs/dill-das v0.0.4 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/PineXLabs/das v0.0.0-00010101000000-000000000000 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect

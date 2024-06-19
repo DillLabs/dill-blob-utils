@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/DillLabs/dill-execution/common"
+	"github.com/DillLabs/dill-execution/crypto/kzg4844"
+	"github.com/DillLabs/dill-execution/params"
 	"github.com/holiman/uint256"
 )
 
