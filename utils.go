@@ -8,14 +8,15 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/PineXLabs/das"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
+	 "github.com/DillLabs/dill-das"
+	"github.com/DillLabs/dill-execution/common"
+	"github.com/DillLabs/dill-execution/core/types"
+	"github.com/DillLabs/dill-execution/crypto"
+	"github.com/DillLabs/dill-execution/crypto/kzg4844"
+	"github.com/DillLabs/dill-execution/ethclient"
+	"github.com/DillLabs/dill-execution/params"
 	"github.com/holiman/uint256"
+	
 )
 
 func encodeBlobs(data []byte) []kzg4844.Blob {

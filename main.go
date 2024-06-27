@@ -11,14 +11,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	gethkzg4844 "github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/DillLabs/dill-execution"
+	"github.com/DillLabs/dill-execution/common"
+	"github.com/DillLabs/dill-execution/core/types"
+	"github.com/DillLabs/dill-execution/crypto"
+	gethkzg4844 "github.com/DillLabs/dill-execution/crypto/kzg4844"
+	"github.com/DillLabs/dill-execution/ethclient"
 	"github.com/holiman/uint256"
 
+	"strings"
+
+	das "github.com/DillLabs/dill-das"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/urfave/cli"
 )
@@ -59,7 +62,7 @@ func main() {
 }
 
 func TxApp(cliCtx *cli.Context) error {
-	addr := cliCtx.String(TxRPCURLFlag.Name)
+	addr := cliCtx.StringSlice(TxRPCURLSFlag.Name)[0]
 	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)
 	file := cliCtx.String(TxBlobFileFlag.Name)
@@ -217,7 +220,7 @@ func RandomFrData(n int) []byte {
 }
 
 func BatchTxApp(cliCtx *cli.Context) {
-	addr := cliCtx.String(TxRPCURLFlag.Name)
+	addrs := cliCtx.StringSlice(TxRPCURLSFlag.Name)
 	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)
 	blobSize := cliCtx.Uint64(TxBlobSizeFlag.Name)
@@ -230,6 +233,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	maxFeePerBlobGas := cliCtx.String(TxMaxFeePerBlobGas.Name)
 	chainID := cliCtx.String(TxChainID.Name)
 	calldata := cliCtx.String(TxCalldata.Name)
+	successSleepTime := cliCtx.Uint64(TxSleepSuccessFlag.Name)
 	value256, err := uint256.FromHex(value)
 	if err != nil {
 		log.Fatalf("invalid value param: %v", err)
@@ -249,9 +253,21 @@ func BatchTxApp(cliCtx *cli.Context) {
 	if len(extra) != len(blobs)*128 {
 		log.Fatal("extra number wrong")
 	}
+	handle := das.New()
+	var segments [][]byte
+	for _, b := range blobs {
+		blobSegs, err := handle.BlobToSegmentNoProof(b[:])
+		if err != nil {
+			log.Fatal("calculat blob ec failed")
+		}
+		for _, seg := range blobSegs {
+			segments = append(segments, seg.Marshal())
+		}
+	}
 	chainId, _ := new(big.Int).SetString(chainID, 0)
 
 	ctx := context.Background()
+	addr := addrs[0]
 	client, err := ethclient.DialContext(ctx, addr)
 	if err != nil {
 		log.Panicf("Failed to connect to the Ethereum client: %v", err)
@@ -314,8 +330,8 @@ func BatchTxApp(cliCtx *cli.Context) {
 	}
 	log.Printf("transfer tx done")
 	for idx := range keys {
-		time.Sleep(5 * time.Second)
 		go func(i int) {
+			addr := addrs[i%len(addrs)]
 			client, err := ethclient.DialContext(ctx, addr)
 			if err != nil {
 				log.Panicf("Failed to connect to the Ethereum client: %v", err)
@@ -325,7 +341,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 			if err != nil {
 				log.Panicf("Error getting nonce: %v", err)
 			}
-			subNonuce := int64(pendingNonce)
+			subNonuce := pendingNonce
 			var gasPrice256 *uint256.Int
 			if gasPrice == "" {
 				val, err := client.SuggestGasPrice(ctx)
@@ -360,7 +376,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 			for {
 				tx := types.NewTx(&types.BlobTx{
 					ChainID:    uint256.MustFromBig(chainId),
-					Nonce:      uint64(subNonuce),
+					Nonce:      subNonuce,
 					GasTipCap:  priorityGasPrice256,
 					GasFeeCap:  gasPrice256,
 					Gas:        gasLimit,
@@ -370,28 +386,39 @@ func BatchTxApp(cliCtx *cli.Context) {
 					BlobFeeCap: maxFeePerBlobGas256,
 					BlobHashes: versionedHashes,
 					Sidecar: &types.BlobTxSidecar{
-						Blobs:       blobs,
 						Commitments: commitments,
 						Proofs:      proofs,
+						Blobs:       blobs,
 						ExtraProofs: extra,
 					},
 				})
 				signedTx, _ := types.SignTx(tx, types.NewCancunSigner(chainId), key)
-
-				log.Printf("Commitments: %v\n", fmt.Sprintf("0x%x", signedTx.BlobTxSidecar().Commitments))
+				log.Printf("Commitments: %v\n", fmt.Sprintf("%x", signedTx.BlobTxSidecar().Commitments))
 				log.Printf("Extra proof count: %v\n", fmt.Sprintf("%d", len(signedTx.BlobTxSidecar().ExtraProofs)))
 				log.Printf("GasTipCap: %v, BlobGasFeeCap: %v, GasFeeCap: %v\n",
 					signedTx.GasTipCap(), signedTx.BlobGasFeeCap(), signedTx.GasFeeCap())
 				err = client.SendTransaction(context.Background(), signedTx)
 				if err != nil {
 					log.Printf("failed to send transaction: %v", err)
-					time.Sleep(waitTime)
+					if strings.Contains(err.Error(), "nonce too high") {
+						pendingNonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(key.PublicKey))
+						if err != nil {
+							log.Panicf("Error getting nonce: %v", err)
+						}
+						subNonuce = pendingNonce
+					} else {
+						time.Sleep(waitTime)
+					}
 				} else {
 					log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
 					subNonuce += 1
+					if successSleepTime > 0 {
+						time.Sleep(time.Duration(successSleepTime) * time.Second)
+					}
 				}
 			}
 		}(idx)
+		time.Sleep(5 * time.Second)
 	}
 
 	pendingCh := make(chan struct{})

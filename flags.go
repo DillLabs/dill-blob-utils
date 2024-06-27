@@ -5,10 +5,10 @@ import (
 )
 
 var (
-	TxRPCURLFlag = cli.StringFlag{
-		Name:  "rpc-url",
-		Usage: "Address of execution node JSON-RPC endpoint",
-		Value: "http://127.0.0.1:8545",
+	TxRPCURLSFlag = cli.StringSliceFlag{
+		Name:  "rpc-urls",
+		Usage: "Addresses of execution node JSON-RPC endpoint",
+		Value: &cli.StringSlice{"http://127.0.0.1:8545"},
 	}
 	TxBlobFileFlag = cli.StringFlag{
 		Name:     "blob-file",
@@ -29,6 +29,11 @@ var (
 		Name:  "tx-concurrence",
 		Usage: "accounts sending tx in parallel",
 		Value: 4,
+	}
+	TxSleepSuccessFlag = cli.Uint64Flag{
+		Name:  "tx-sleep-success",
+		Usage: "sleep time if tx sending success",
+		Value: 0,
 	}
 	TxWaitingFlag = cli.Uint64Flag{
 		Name:  "tx-waiting",
@@ -114,7 +119,7 @@ var (
 )
 
 var TxFlags = []cli.Flag{
-	TxRPCURLFlag,
+	TxRPCURLSFlag,
 	TxBlobFileFlag,
 	TxToFlag,
 	TxValueFlag,
@@ -129,7 +134,7 @@ var TxFlags = []cli.Flag{
 }
 
 var BatchTxFlags = []cli.Flag{
-	TxRPCURLFlag,
+	TxRPCURLSFlag,
 	TxBlobSizeFlag,
 	TxWaitingFlag,
 	TxBlobCountFlag,
@@ -144,6 +149,7 @@ var BatchTxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
+	TxSleepSuccessFlag,
 }
 
 var DownloadFlags = []cli.Flag{
