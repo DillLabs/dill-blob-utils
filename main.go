@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/DillLabs/dill-execution"
+	ethereum "github.com/DillLabs/dill-execution"
 	"github.com/DillLabs/dill-execution/common"
 	"github.com/DillLabs/dill-execution/core/types"
 	"github.com/DillLabs/dill-execution/crypto"
@@ -305,7 +305,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	for i, subKey := range keys {
 		pub := subKey.PublicKey
 		addr := crypto.PubkeyToAddress(pub)
-		tx, err := transferToken(client, addr.Hex(), 100, uint64(masterNonce), chainId.Int64(), gasPrice256.ToBig().Int64(), int64(gasLimit), masterKey)
+		tx, err := transferToken(client, addr.Hex(), 50, uint64(masterNonce), chainId.Int64(), gasPrice256.ToBig().Int64(), int64(gasLimit), masterKey)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -387,9 +387,8 @@ func BatchTxApp(cliCtx *cli.Context) {
 					BlobHashes: versionedHashes,
 					Sidecar: &types.BlobTxSidecar{
 						Commitments: commitments,
-						Proofs:      proofs,
-						Blobs:       blobs,
 						ExtraProofs: extra,
+						Segments:    segments,
 					},
 				})
 				signedTx, _ := types.SignTx(tx, types.NewCancunSigner(chainId), key)
@@ -413,12 +412,12 @@ func BatchTxApp(cliCtx *cli.Context) {
 					log.Printf("successfully sent transaction. txhash=%v", signedTx.Hash())
 					subNonuce += 1
 					if successSleepTime > 0 {
-						time.Sleep(time.Duration(successSleepTime) * time.Second)
+						time.Sleep(time.Duration(successSleepTime) * time.Millisecond)
 					}
 				}
 			}
 		}(idx)
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 
 	pendingCh := make(chan struct{})

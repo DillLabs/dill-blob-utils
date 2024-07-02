@@ -32,7 +32,7 @@ var (
 	}
 	TxSleepSuccessFlag = cli.Uint64Flag{
 		Name:  "tx-sleep-success",
-		Usage: "sleep time if tx sending success",
+		Usage: "sleep millisecond if tx sending success",
 		Value: 0,
 	}
 	TxWaitingFlag = cli.Uint64Flag{
