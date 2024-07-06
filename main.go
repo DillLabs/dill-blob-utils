@@ -246,7 +246,7 @@ func BatchTxApp(cliCtx *cli.Context) {
 	blobSize = blobSize - blobSize%32
 	blobPerTx := cliCtx.Uint64(TxBlobCountFlag.Name)
 	data := RandomFrData(int(blobSize * blobPerTx))
-	blobs, commitments, proofs, extra, versionedHashes, err := EncodeBlobs(data, true)
+	blobs, commitments, _, extra, versionedHashes, err := EncodeBlobs(data, true)
 	if err != nil {
 		log.Fatalf("failed to compute commitments: %v", err)
 	}

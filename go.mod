@@ -9,7 +9,7 @@ replace github.com/DillLabs/dill-das => ../dill-das
 replace github.com/DillLabs/dill-execution => ../dill-execution
 
 require (
-	github.com/DillLabs/dill-das v0.0.4
+	github.com/DillLabs/dill-das v0.0.6
 	github.com/DillLabs/dill-execution v0.0.0-00010101000000-000000000000
 	github.com/consensys/gnark-crypto v0.12.1
 	github.com/holiman/uint256 v1.2.4
