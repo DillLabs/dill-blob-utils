@@ -106,6 +106,31 @@ var (
 		Usage:    "Input point of the proof",
 		Required: true,
 	}
+	TxRPCURLSFlag = cli.StringSliceFlag{
+		Name:  "rpc-urls",
+		Usage: "Addresses of execution node JSON-RPC endpoint",
+		Value: &cli.StringSlice{"http://127.0.0.1:8545"},
+	}
+	TxConcurrenceFlag = cli.Uint64Flag{
+		Name:  "tx-concurrence",
+		Usage: "accounts sending tx in parallel",
+		Value: 4,
+	}
+	TxSleepSuccessFlag = cli.Uint64Flag{
+		Name:  "tx-sleep-success",
+		Usage: "sleep millisecond if tx sending success",
+		Value: 0,
+	}
+	TxWaitingFlag = cli.Uint64Flag{
+		Name:  "tx-waiting",
+		Usage: "waiting time when tx pool overloaded",
+		Value: 15,
+	}
+	TxBlobCountFlag = cli.Uint64Flag{
+		Name:  "tx-blob-count",
+		Usage: "blob counts in a single tx",
+		Value: 2,
+	}
 )
 
 var TxFlags = []cli.Flag{
@@ -124,8 +149,11 @@ var TxFlags = []cli.Flag{
 }
 
 var BatchTxFlags = []cli.Flag{
-	TxRPCURLFlag,
+	TxRPCURLSFlag,
 	TxBlobSizeFlag,
+	TxWaitingFlag,
+	TxBlobCountFlag,
+	TxConcurrenceFlag,
 	TxToFlag,
 	TxValueFlag,
 	TxPrivateKeyFlag,
@@ -136,8 +164,7 @@ var BatchTxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
-	TxDeltaNonceFlag,
-	TxDeltaSleepTimeFlag,
+	TxSleepSuccessFlag,
 }
 
 var TransferTxFlags = []cli.Flag{

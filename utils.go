@@ -1,13 +1,19 @@
 package main
 
 import (
+	"context"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"fmt"
 	"math/big"
 	"strings"
 
+	das "github.com/DillLabs/dill-das"
 	"github.com/DillLabs/dill-execution/common"
+	"github.com/DillLabs/dill-execution/core/types"
+	"github.com/DillLabs/dill-execution/crypto"
 	"github.com/DillLabs/dill-execution/crypto/kzg4844"
+	"github.com/DillLabs/dill-execution/ethclient"
 	"github.com/DillLabs/dill-execution/params"
 	"github.com/holiman/uint256"
 )
@@ -32,11 +38,12 @@ func encodeBlobs(data []byte) []kzg4844.Blob {
 	return blobs
 }
 
-func EncodeBlobs(data []byte, canonical ...bool) ([]kzg4844.Blob, []kzg4844.Commitment, []kzg4844.Proof, []common.Hash, error) {
+func EncodeBlobs(data []byte, canonical ...bool) ([]kzg4844.Blob, []kzg4844.Commitment, []kzg4844.Proof, []kzg4844.Proof, []common.Hash, error) {
 	var (
 		blobs           []kzg4844.Blob
 		commits         []kzg4844.Commitment
 		proofs          []kzg4844.Proof
+		extraProofs     []kzg4844.Proof
 		versionedHashes []common.Hash
 	)
 
@@ -51,19 +58,25 @@ func EncodeBlobs(data []byte, canonical ...bool) ([]kzg4844.Blob, []kzg4844.Comm
 	for _, blob := range blobs {
 		commit, err := kzg4844.BlobToCommitment(blob)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		commits = append(commits, commit)
 
 		proof, err := kzg4844.ComputeBlobProof(blob, commit)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		proofs = append(proofs, proof)
-
+		ep, err := das.BlobToSegmentsProofOnly(blob[:])
+		if err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+		for _, p := range ep {
+			extraProofs = append(extraProofs, kzg4844.Proof(das.MarshalProof(&p)))
+		}
 		versionedHashes = append(versionedHashes, kZGToVersionedHash(commit))
 	}
-	return blobs, commits, proofs, versionedHashes, nil
+	return blobs, commits, proofs, extraProofs, versionedHashes, nil
 }
 
 var blobCommitmentVersionKZG uint8 = 0x01
@@ -113,4 +126,40 @@ func DecodeUint256String(hexOrDecimal string) (*uint256.Int, error) {
 		return nil, fmt.Errorf("value is too big")
 	}
 	return val256, nil
+}
+
+func generatePrivateKeys(count int) []*ecdsa.PrivateKey {
+	keys := []*ecdsa.PrivateKey{}
+	for range count {
+		key, _ := crypto.GenerateKey()
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func transferToken(client *ethclient.Client, toAddress string,
+	etherAmount int64, nonce uint64,
+	chainId int64, globalGasPrice int64,
+	globalGasAmount int64,
+	privateKey *ecdsa.PrivateKey) (*types.Transaction, error) {
+
+	to := common.HexToAddress(toAddress)
+	eip1559Tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		GasPrice: big.NewInt(globalGasPrice),
+		Gas:      uint64(globalGasAmount),
+		To:       &to,
+		Value:    new(big.Int).Mul(big.NewInt(etherAmount), big.NewInt(params.Ether)),
+		Data:     nil,
+	})
+	signedTx, err := types.SignTx(eip1559Tx, types.LatestSignerForChainID(big.NewInt(chainId)), privateKey)
+	if err != nil {
+		return nil, err
+	}
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
 }
