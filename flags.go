@@ -11,9 +11,8 @@ var (
 		Value: "http://127.0.0.1:8545",
 	}
 	TxBlobFileFlag = cli.StringFlag{
-		Name:     "blob-file",
-		Usage:    "Blob file data",
-		Required: true,
+		Name:  "blob-file",
+		Usage: "Blob file data",
 	}
 	TxBlobSizeFlag = cli.Uint64Flag{
 		Name:  "blob-size",

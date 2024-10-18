@@ -92,10 +92,14 @@ func TxApp(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("invalid value param: %v", err)
 	}
-
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return fmt.Errorf("error reading blob file: %v", err)
+	var data []byte
+	if file == "" {
+		data = RandomFrData(4096 * 32)
+	} else {
+		data, err = os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("error reading blob file: %v", err)
+		}
 	}
 	log.Printf("file size: %d\n", len(data))
 
@@ -151,7 +155,7 @@ func TxApp(cliCtx *cli.Context) error {
 		return fmt.Errorf("%w: invalid max_fee_per_blob_gas", err)
 	}
 
-	blobs, commitments, proofs, _, versionedHashes, err := EncodeBlobs(data)
+	blobs, commitments, proofs, _, versionedHashes, err := EncodeBlobs(data, file == "")
 	if err != nil {
 		log.Fatalf("failed to compute commitments: %v", err)
 	}
