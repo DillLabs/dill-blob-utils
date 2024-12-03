@@ -42,7 +42,7 @@ var (
 	TxGasLimitFlag = cli.Uint64Flag{
 		Name:  "gas-limit",
 		Usage: "tx gas limit",
-		Value: 21000,
+		Value: 210000,
 	}
 	TxGasPriceFlag = cli.StringFlag{
 		Name:  "gas-price",
@@ -56,7 +56,7 @@ var (
 	TxMaxFeePerBlobGas = cli.StringFlag{
 		Name:  "max-fee-per-blob-gas",
 		Usage: "Sets the max_fee_per_blob_gas",
-		Value: "3000000000",
+		Value: "30000000000",
 	}
 	TxChainID = cli.StringFlag{
 		Name:  "chain-id",
@@ -130,6 +130,10 @@ var (
 		Usage: "blob counts in a single tx",
 		Value: 2,
 	}
+	TxBlobWaitInclusionFlag = cli.BoolTFlag{
+		Name:  "tx-wait-inclusion",
+		Usage: "if wait for tx inclusion",
+	}
 )
 
 var TxFlags = []cli.Flag{
@@ -145,6 +149,7 @@ var TxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
+	TxBlobCountFlag,
 }
 
 var BatchTxFlags = []cli.Flag{

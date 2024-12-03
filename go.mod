@@ -6,6 +6,7 @@ require (
 	github.com/DillLabs/dill-das v0.0.9
 	github.com/DillLabs/dill-execution v1.21.0
 	github.com/consensys/gnark-crypto v0.12.1
+	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233
 	github.com/holiman/uint256 v1.2.4
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.10

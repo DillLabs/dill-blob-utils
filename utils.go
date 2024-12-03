@@ -5,16 +5,21 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
 
+	"github.com/DillLabs/dill-blob-utils/hex"
 	das "github.com/DillLabs/dill-das"
+	ethereum "github.com/DillLabs/dill-execution"
+	"github.com/DillLabs/dill-execution/accounts/abi/bind"
 	"github.com/DillLabs/dill-execution/common"
 	"github.com/DillLabs/dill-execution/core/types"
 	"github.com/DillLabs/dill-execution/crypto"
 	"github.com/DillLabs/dill-execution/crypto/kzg4844"
 	"github.com/DillLabs/dill-execution/ethclient"
 	"github.com/DillLabs/dill-execution/params"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/holiman/uint256"
 )
 
@@ -162,4 +167,55 @@ func transferToken(client *ethclient.Client, toAddress string,
 	}
 
 	return signedTx, nil
+}
+
+func RandomFrData(n int) []byte {
+	data := make([]byte, n)
+	ele := fr.Element{}
+	for i := 0; i < n/32; i++ {
+		ele.SetRandom()
+		eleBytes := ele.Bytes()
+		copy(data[i*32:], eleBytes[:])
+	}
+	return data
+}
+
+func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.TransactOpts, to common.Address, amount *big.Int, nonce *uint64) *types.Transaction {
+	if nonce == nil {
+		log.Printf("reading nonce for account: %v", auth.From.Hex())
+		var err error
+		n, err := client.NonceAt(ctx, auth.From, nil)
+		log.Printf("nonce: %v", n)
+		chkErr(err)
+		nonce = &n
+	}
+
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	chkErr(err)
+
+	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{To: &to})
+	chkErr(err)
+
+	tx := types.NewTransaction(*nonce, to, amount, gasLimit, gasPrice, nil)
+
+	signedTx, err := auth.Signer(auth.From, tx)
+	chkErr(err)
+
+	//log.Printf("sending transfer tx")
+	err = client.SendTransaction(ctx, signedTx)
+	chkErr(err)
+	log.Printf("tx sent: %v", signedTx.Hash().Hex())
+
+	rlp, err := signedTx.MarshalBinary()
+	chkErr(err)
+
+	log.Printf("tx rlp: %v", hex.EncodeToHex(rlp))
+
+	return signedTx
+}
+
+func chkErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
 }
