@@ -152,7 +152,7 @@ var TxFlags = []cli.Flag{
 	TxBlobCountFlag,
 }
 
-var BatchTxFlags = []cli.Flag{
+var StressBlobTxFlags = []cli.Flag{
 	TxRPCURLSFlag,
 	TxBlobSizeFlag,
 	TxWaitingFlag,

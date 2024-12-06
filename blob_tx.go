@@ -18,7 +18,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func TxApp(cliCtx *cli.Context) error {
+func BlobTxApp(cliCtx *cli.Context) error {
 	addr := cliCtx.String(TxRPCURLFlag.Name)
 	to := common.HexToAddress(cliCtx.String(TxToFlag.Name))
 	prv := cliCtx.String(TxPrivateKeyFlag.Name)

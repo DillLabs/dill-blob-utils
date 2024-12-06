@@ -15,14 +15,14 @@ func main() {
 		{
 			Name:   "tx",
 			Usage:  "send a blob transaction",
-			Action: TxApp,
+			Action: BlobTxApp,
 			Flags:  TxFlags,
 		},
 		{
-			Name:   "batchTx",
-			Usage:  "send a batch of transactions",
-			Action: BatchTxApp,
-			Flags:  BatchTxFlags,
+			Name:   "stress_blob",
+			Usage:  "loop sending blob txs transactions",
+			Action: StressBlobTxApp,
+			Flags:  StressBlobTxFlags,
 		},
 		{
 			Name:   "transferTx",

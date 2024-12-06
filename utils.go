@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/DillLabs/dill-blob-utils/hex"
 	das "github.com/DillLabs/dill-das"
@@ -144,20 +145,20 @@ func generatePrivateKeys(count int) []*ecdsa.PrivateKey {
 
 func transferToken(client *ethclient.Client, toAddress string,
 	etherAmount int64, nonce uint64,
-	chainId int64, globalGasPrice int64,
-	globalGasAmount int64,
+	chainId *big.Int, globalGasPrice *big.Int,
+	globalGasAmount uint64,
 	privateKey *ecdsa.PrivateKey) (*types.Transaction, error) {
 
 	to := common.HexToAddress(toAddress)
 	eip1559Tx := types.NewTx(&types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: big.NewInt(globalGasPrice),
-		Gas:      uint64(globalGasAmount),
+		GasPrice: globalGasPrice,
+		Gas:      globalGasAmount,
 		To:       &to,
 		Value:    new(big.Int).Mul(big.NewInt(etherAmount), big.NewInt(params.Ether)),
 		Data:     nil,
 	})
-	signedTx, err := types.SignTx(eip1559Tx, types.LatestSignerForChainID(big.NewInt(chainId)), privateKey)
+	signedTx, err := types.SignTx(eip1559Tx, types.LatestSignerForChainID(chainId), privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -217,5 +218,50 @@ func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.Trans
 func chkErr(err error) {
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func sendTxAndWait(ctx context.Context, client *ethclient.Client, tx *types.Transaction) error {
+	start := time.Now()
+	log.Printf("Commitments: %v\n", fmt.Sprintf("%x", tx.BlobTxSidecar().Commitments))
+	log.Printf("GasTipCap: %v, BlobGasFeeCap: %v, GasFeeCap: %v\n",
+		tx.GasTipCap(), tx.BlobGasFeeCap(), tx.GasFeeCap())
+	err := client.SendTransaction(ctx, tx)
+	if err != nil {
+		return err
+	}
+	for {
+		_, err := client.TransactionReceipt(context.Background(), tx.Hash())
+		if err == ethereum.NotFound {
+			time.Sleep(4 * time.Second)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		break
+	}
+	log.Printf("tx %s included, time used %fs", tx.Hash().String(), time.Since(start).Seconds())
+	return nil
+}
+
+type blobsStruct struct {
+	blobs           []kzg4844.Blob
+	comms           []kzg4844.Commitment
+	proofs          []kzg4844.Proof
+	versionedHashes []common.Hash
+}
+
+func randomBlobs(cnt int) blobsStruct {
+	data := RandomFrData(4096 * 32 * cnt)
+	blobs, commitments, proofs, _, versionedHashes, err := EncodeBlobs(data, true)
+	if err != nil {
+		log.Fatalf("failed to compute commitments: %v", err)
+	}
+	return blobsStruct{
+		blobs:           blobs,
+		comms:           commitments,
+		proofs:          proofs,
+		versionedHashes: versionedHashes,
 	}
 }
