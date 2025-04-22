@@ -11,9 +11,8 @@ var (
 		Value: "http://127.0.0.1:8545",
 	}
 	TxBlobFileFlag = cli.StringFlag{
-		Name:     "blob-file",
-		Usage:    "Blob file data",
-		Required: true,
+		Name:  "blob-file",
+		Usage: "Blob file data",
 	}
 	TxBlobSizeFlag = cli.Uint64Flag{
 		Name:  "blob-size",
@@ -43,7 +42,7 @@ var (
 	TxGasLimitFlag = cli.Uint64Flag{
 		Name:  "gas-limit",
 		Usage: "tx gas limit",
-		Value: 21000,
+		Value: 210000,
 	}
 	TxGasPriceFlag = cli.StringFlag{
 		Name:  "gas-price",
@@ -57,7 +56,7 @@ var (
 	TxMaxFeePerBlobGas = cli.StringFlag{
 		Name:  "max-fee-per-blob-gas",
 		Usage: "Sets the max_fee_per_blob_gas",
-		Value: "3000000000",
+		Value: "30000000000",
 	}
 	TxChainID = cli.StringFlag{
 		Name:  "chain-id",
@@ -106,6 +105,35 @@ var (
 		Usage:    "Input point of the proof",
 		Required: true,
 	}
+	TxRPCURLSFlag = cli.StringSliceFlag{
+		Name:  "rpc-urls",
+		Usage: "Addresses of execution node JSON-RPC endpoint",
+		Value: &cli.StringSlice{"http://127.0.0.1:8545"},
+	}
+	TxConcurrenceFlag = cli.Uint64Flag{
+		Name:  "tx-concurrence",
+		Usage: "accounts sending tx in parallel",
+		Value: 4,
+	}
+	TxSleepSuccessFlag = cli.Uint64Flag{
+		Name:  "tx-sleep-success",
+		Usage: "sleep millisecond if tx sending success",
+		Value: 0,
+	}
+	TxWaitingFlag = cli.Uint64Flag{
+		Name:  "tx-waiting",
+		Usage: "waiting time when tx pool overloaded",
+		Value: 15,
+	}
+	TxBlobCountFlag = cli.Uint64Flag{
+		Name:  "tx-blob-count",
+		Usage: "blob counts in a single tx",
+		Value: 2,
+	}
+	TxBlobWaitInclusionFlag = cli.BoolTFlag{
+		Name:  "tx-wait-inclusion",
+		Usage: "if wait for tx inclusion",
+	}
 )
 
 var TxFlags = []cli.Flag{
@@ -121,11 +149,15 @@ var TxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
+	TxBlobCountFlag,
 }
 
-var BatchTxFlags = []cli.Flag{
-	TxRPCURLFlag,
+var StressBlobTxFlags = []cli.Flag{
+	TxRPCURLSFlag,
 	TxBlobSizeFlag,
+	TxWaitingFlag,
+	TxBlobCountFlag,
+	TxConcurrenceFlag,
 	TxToFlag,
 	TxValueFlag,
 	TxPrivateKeyFlag,
@@ -136,8 +168,7 @@ var BatchTxFlags = []cli.Flag{
 	TxMaxFeePerBlobGas,
 	TxChainID,
 	TxCalldata,
-	TxDeltaNonceFlag,
-	TxDeltaSleepTimeFlag,
+	TxSleepSuccessFlag,
 }
 
 var TransferTxFlags = []cli.Flag{
