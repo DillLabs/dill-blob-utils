@@ -31,6 +31,12 @@ func main() {
 			Flags:  TransferTxFlags,
 		},
 		{
+			Name:   "transferNewTx",
+			Usage:  "send a transfer transaction using newTx",
+			Action: TransferNewTxApp,
+			Flags:  TransferNewTxFlags,
+		},
+		{
 			Name:   "batchTransferTx",
 			Usage:  "send a batch of transfer transaction",
 			Action: BatchTransferTxApp,

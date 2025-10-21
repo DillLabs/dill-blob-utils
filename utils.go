@@ -197,6 +197,7 @@ func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.Trans
 	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{To: &to})
 	chkErr(err)
 
+	//legacy transaction
 	tx := types.NewTransaction(*nonce, to, amount, gasLimit, gasPrice, nil)
 
 	signedTx, err := auth.Signer(auth.From, tx)
@@ -209,6 +210,68 @@ func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.Trans
 
 	rlp, err := signedTx.MarshalBinary()
 	chkErr(err)
+
+	log.Printf("tx rlp: %v", hex.EncodeToHex(rlp))
+
+	return signedTx
+}
+
+// newTxWithCustomFees 允许自定义 max base fee 和 max priority fee 的转账函数
+func newTx(ctx context.Context, client *ethclient.Client, auth *bind.TransactOpts, to common.Address, amount *big.Int, nonce *uint64, maxFeePerGas *big.Int, maxPriorityFeePerGas *big.Int) *types.Transaction {
+	if nonce == nil {
+		log.Printf("reading nonce for account: %v", auth.From.Hex())
+		var err error
+		n, err := client.NonceAt(ctx, auth.From, nil)
+		log.Printf("nonce: %v", n)
+		chkErr(err)
+		nonce = &n
+	}
+
+	// 如果没有提供 max fee，则使用建议值
+	if maxFeePerGas == nil {
+		gasPrice, err := client.SuggestGasPrice(context.Background())
+		chkErr(err)
+		maxFeePerGas = gasPrice
+	}
+
+	// 如果没有提供 max priority fee，则使用建议值
+	if maxPriorityFeePerGas == nil {
+		var err error
+		maxPriorityFeePerGas, err = client.SuggestGasTipCap(context.Background())
+		chkErr(err)
+	}
+
+	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{To: &to})
+	chkErr(err)
+
+	log.Printf("Using MaxFeePerGas: %v wei (%v gwei)", maxFeePerGas, new(big.Int).Div(maxFeePerGas, big.NewInt(1e9)))
+	log.Printf("Using MaxPriorityFeePerGas: %v wei (%v gwei)", maxPriorityFeePerGas, new(big.Int).Div(maxPriorityFeePerGas, big.NewInt(1e9)))
+
+	tx := types.NewTx(&types.DynamicFeeTx{
+		Nonce:     *nonce,
+		Gas:       gasLimit,
+		To:        &to,
+		Value:     amount,
+		Data:      nil,
+		GasFeeCap: maxFeePerGas,
+		GasTipCap: maxPriorityFeePerGas,
+	})
+
+	signedTx, err := auth.Signer(auth.From, tx)
+	if err != nil {
+		chkErr(fmt.Errorf("auth.Signer error: %v", err))
+	}
+
+	err = client.SendTransaction(ctx, signedTx)
+	if err != nil {
+		chkErr(fmt.Errorf("client.SendTransaction error: %v", err))
+	}
+	log.Printf("tx sent: %v", signedTx.Hash().Hex())
+
+	rlp, err := signedTx.MarshalBinary()
+	if err != nil {
+		chkErr(fmt.Errorf("signedTx.MarshalBinary error: %v", err))
+	}
 
 	log.Printf("tx rlp: %v", hex.EncodeToHex(rlp))
 

@@ -24,6 +24,11 @@ var (
 		Usage:    "tx to address",
 		Required: true,
 	}
+	TxReceipientFlag = cli.StringFlag{
+		Name:  "receipient",
+		Usage: "receipient address, set by validator node",
+		Value: "0x1a5E568E5b26A95526f469E8d9AC6d1C30432B33",
+	}
 	TxValueFlag = cli.StringFlag{
 		Name:  "value",
 		Usage: "tx value (wei deonominated)",
@@ -178,6 +183,18 @@ var TransferTxFlags = []cli.Flag{
 	TxPrivateKeyFlag,
 	TxNonceFlag,
 	TxChainID,
+}
+
+var TransferNewTxFlags = []cli.Flag{
+	TxRPCURLFlag,
+	TxToFlag,
+	TxReceipientFlag,
+	TxValueFlag,
+	TxPrivateKeyFlag,
+	TxNonceFlag,
+	TxChainID,
+	TxGasPriceFlag,
+	TxPriorityGasPrice,
 }
 
 var BatchTransferTxFlags = []cli.Flag{
