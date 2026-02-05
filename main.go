@@ -54,6 +54,12 @@ func main() {
 			Action: ProofApp,
 			Flags:  ProofFlags,
 		},
+		{
+			Name:   "balance",
+			Usage:  "query balance of an address",
+			Action: BalanceApp,
+			Flags:  BalanceFlags,
+		},
 	}
 	das.InitKZGContext()
 

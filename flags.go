@@ -110,6 +110,11 @@ var (
 		Usage:    "Input point of the proof",
 		Required: true,
 	}
+	BalanceAddressFlag = cli.StringFlag{
+		Name:     "address",
+		Usage:    "Address to query balance for",
+		Required: true,
+	}
 	TxRPCURLSFlag = cli.StringSliceFlag{
 		Name:  "rpc-urls",
 		Usage: "Addresses of execution node JSON-RPC endpoint",
@@ -217,4 +222,9 @@ var ProofFlags = []cli.Flag{
 	ProofBlobFileFlag,
 	ProofBlobIndexFlag,
 	ProofInputPointFlag,
+}
+
+var BalanceFlags = []cli.Flag{
+	TxRPCURLFlag,
+	BalanceAddressFlag,
 }
